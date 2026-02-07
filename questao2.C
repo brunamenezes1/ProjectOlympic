@@ -120,3 +120,42 @@ int main() {
     
     fgets(line, MAX_LINE, file);
 
+        /*
+        Este laço lê o arquivo CSV linha por linha e extrai, para cada registro,
+        os campos de sexo, país (NOC) e ID do atleta, preparando os dados para
+        a verificação e contagem.
+    */
+    while (fgets(line, MAX_LINE, file)) {
+
+        char sex[20], noc[50];
+        int athlete_id;
+
+        extrairCampos(line, sex, noc, &athlete_id);
+
+        trim(sex);
+        trim(noc);
+
+        /*
+            O código verifica se o atleta pertence ao país informado e se
+            ainda não foi contabilizado. Caso seja um atleta novo, ele é
+            registrado e contado de acordo com o sexo.
+        */
+        if (strcmp(noc, pais) == 0 && athlete_id != -1) {
+
+            if (!jaContado(athlete_id, atletas, totalAtletas)) {
+                atletas[totalAtletas++] = athlete_id;
+
+                if (strcmp(sex, "Male") == 0)
+                    masculino++;
+                else if (strcmp(sex, "Female") == 0)
+                    feminino++;
+            }
+        }
+    }
+
+    fclose(file);
+
+    return 0;
+}
+
+
