@@ -117,3 +117,65 @@ void extrairCampos(char *linha, char *sex, char *noc, int *athlete_id, float *we
 }
 
 
+int main() {
+
+    /* Abertura do arquivo CSV */
+    FILE *file = fopen("bios.csv", "r");
+    if (!file) {
+        printf("Erro ao abrir bios.csv\n");
+        return 1;
+    }
+
+    /* Leitura do país informado pelo usuário */
+    char pais[50];
+    printf("Digite o nome do pais (em ingles, ex: Japan, Brazil, France): ");
+    fflush(stdout);
+    fgets(pais, 50, stdin);
+    trim(pais);
+
+    /* Estruturas de controle e contadores */
+    char line[MAX_LINE];
+    int atletas[MAX_ATHLETES];
+    int totalAtletas = 0;
+    int masculino = 0;
+    int feminino = 0;
+
+    /* Desconsidera o cabeçalho do arquivo */
+    fgets(line, MAX_LINE, file);
+
+    /* Processa cada linha do arquivo */
+    while (fgets(line, MAX_LINE, file)) {
+
+        char sex[20], noc[50];
+        int athlete_id;
+        float weight;
+
+        extrairCampos(line, sex, noc, &athlete_id, &weight);
+        trim(sex);
+        trim(noc);
+
+        /* Aplica os critérios de filtragem dos atletas */
+        if (strcmp(noc, pais) == 0 &&
+            athlete_id != -1 &&
+            weight > 100.0 &&
+            !jaContado(athlete_id, atletas, totalAtletas)) {
+
+            atletas[totalAtletas++] = athlete_id;
+
+            if (strcmp(sex, "Male") == 0)
+                masculino++;
+            else if (strcmp(sex, "Female") == 0)
+                feminino++;
+        }
+    }
+
+    fclose(file);
+
+    /* Exibição dos resultados finais */
+    printf("\n%s (peso > 100kg):\n", pais);
+    printf("Total de atletas: %d\n", masculino + feminino);
+    printf("Atletas masculinos: %d\n", masculino);
+    printf("Atletas femininos: %d\n", feminino);
+
+    return 0;
+}
