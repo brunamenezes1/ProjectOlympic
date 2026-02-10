@@ -136,6 +136,58 @@ int main(){
     qsort(homens, h_count, sizeof(Atletas), comparar_idades);
     qsort(mulheres, m_count, sizeof(Atletas), comparar_idades);
 
+    // Arquivos de saída para o gnuplot, criação de arquivos .dat
+    FILE *f_homens = fopen("top10_homens.dat", "w");
+    FILE *f_mulheres = fopen("top10_mulheres.dat", "w");
+    FILE *grafico_atletas = fopen("grafico_atletas.gp", "w");
+
+    if (!f_homens || !f_mulheres) {
+        printf("Erro ao criar arquivos de saída para o gnuplot.\n");
+        return 1;
+    }
+
+    if (!grafico_atletas) {
+        printf("Erro ao criar script gnuplot.\n");
+        return 1;
+    }
+
+    for (int i = 0; i < 10 && i < h_count; i++) {
+        fprintf(f_homens, "%d %d\n", i+1, homens[i].maior_idade);
+    }
+
+    for (int i = 0; i < 10 && i < m_count; i++) {
+        fprintf(f_mulheres, "%d %d\n", i+1, mulheres[i].maior_idade);
+    }
+
+    //Cria automaticamente os códigos em formato gnuplot para o arquivo "grafico_atletas.gp"
+    fprintf(grafico_atletas,
+        "set terminal pngcairo size 1200,600 enhanced font 'Arial,12'\n"
+        "set output 'atletas_mais_velhos.png'\n"
+        "\n"
+        "set title 'Os 10 Atletas Mais Velhos da História Olímpica'\n"
+        "set xlabel 'Ranking'\n"
+        "set ylabel 'Idade (anos)'\n"
+        "\n"
+        "set grid\n"
+        "set key outside\n"
+        "set style data histograms\n"
+        "set style fill solid 0.7 border -1\n"
+        "set boxwidth 0.6\n"
+        "\n"
+        "plot "
+        "'top10_homens.dat' using 2:xtic(1) title 'Homens', "
+        "'top10_mulheres.dat' using 2:xtic(1) title 'Mulheres'\n");
+
+    //Limpeza e fecha os arquivos do .dat, informações e do gráfico
+    fclose(f_homens);
+    fclose(f_mulheres);
+    fclose(grafico_atletas);
+
+    FILE *grafico_atleta_run = popen("gnuplot", "w"); //Criação do arquivo gnuplot
+    fprintf(grafico_atleta_run, "load 'grafico_atletas.gp'\n"); //Ler o arquivo gnuplot
+    fflush(grafico_atleta_run); //Forçar o envio imediato e evitar ficar preso no buffer antes do programa fechar
+    pclose(grafico_atleta_run); //Fecha o arquivo gnuplot
+
     //Exibição dos atletas mais velhos separados por gêneros
     printf("\n--- 10 atletas masculinos mais velhos de todos os tempos ---\n");
     for(int i = 0; i < 10 && i < h_count; i++)
