@@ -121,10 +121,7 @@ int main() {
 
     /* Abertura do arquivo CSV */
     FILE *file = fopen("bios.csv", "r");
-    if (!file) {
-        printf("Erro ao abrir bios.csv\n");
-        return 1;
-    }
+ 
 
     /* Leitura do país informado pelo usuário */
     char pais[50];

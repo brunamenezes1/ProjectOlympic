@@ -1,89 +1,169 @@
-#include <stdio.h> // Biblioteca para entrada e saída de dados
+#include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX 200000
-#define OLYMPIC_YEARS 1896 //definições de constantes
+#define MAX_ATLETAS 350000 // Aumentado para suportar os 300k do bios.csv
 
-typedef struct { //Definição de como definir a estrutura Atleta
-    int id;
-    char name[100];
-    char sex;
-    int birth_year;
-    int age;
-} Athlete; 
+typedef struct
+{
+    int atleta_id;
+    char nome[100];
+    char genero;
+    int data_nascimento;
+    int ano_olimpiada;
+    int menor_idade;
+} Atletas;
 
-int participated[MAX] = {0}; // Considera apenas quem participou dos jogos olímpicos
-
-int compare(const void *a, const void *b) {
-    return ((Athlete*)a)->age - ((Athlete*)b)->age;
-} //Ordena a idade dos atletas de forma crescente
-
-int main() {
-    FILE *results = fopen("./results/results.csv", "r");
-    FILE *bios = fopen("./athletes/bios.csv", "r"); //Abre os arquivos results.csv e bios.csv para leitura
-
-    if (results == NULL) {
-        printf("Erro ao abrir results.csv\n");
-        return 1;
-    }
-
-    if (bios == NULL) {
-        printf("Erro ao abrir bios.csv\n");
-        fclose(results);
-        return 1;
-    } // Verifica se os arquivos foram abertos corretamente
-
-    char line[1024];//armazena cada linha dos arquivos
-
-    fgets(line, sizeof(line), results); //ignora a primeira linha do results.csv (cabeçalho)
-    while (fgets(line, sizeof(line), results)) {
-        int id;
-        sscanf(line, "%d", &id);
-
-        if (id >= 0 && id < MAX)
-            participated[id] = 1;
-    } //Aqui saberemos quem participou dos jogos
-
-    Athlete male[5000], female[5000];
-    int m = 0, f = 0; //Classificação por genero
-
-    fgets(line, sizeof(line), bios); //ignora a primeira linha do bios.csv (cabeçalho)
-
-    while (fgets(line, sizeof(line), bios)) {
-        Athlete a;
-        char birth[20];
-
-        sscanf(line, "%d,%99[^,],%c,%19[^,]",
-               &a.id, a.name, &a.sex, birth); //Extrai os dados do bios e aramazena pra necessario
-
-        if (a.id < 0 || a.id >= MAX) continue;
-
-        if (!participated[a.id]) continue; //ignora quem nao participou dos jogos olímpicos
-        if (strlen(birth) < 4) continue; //ignora quem nao tem o ano de nascimento completo
-
-        sscanf(birth, "%d", &a.birth_year); //ano do nascimento do atleta
-
-        a.age = OLYMPIC_YEARS - a.birth_year;//calcula a idade com base no ano que nasceu e nos jogos que participou 
-
-        if (a.sex == 'M' && m < 5000) male[m++] = a; //separa em masculino
-        else if (a.sex == 'F' && f < 5000) female[f++] = a;//separa em feminino
-    }
-
-    qsort(male, m, sizeof(Athlete), compare);
-    qsort(female, f, sizeof(Athlete), compare); //ordena por idade
-
-    printf("\nTop 10 atletas mais jovens (Masculino)\n");
-    for (int i = 0; i < 10 && i < m; i++)
-        printf("%d. %s - %d anos\n", i + 1, male[i].name, male[i].age); //mostra os 10 primeiros masculinos e protege se tiver menos de 10
-
-    printf("\nTop 10 atletas mais jovens (Feminino)\n");
-    for (int i = 0; i < 10 && i < f; i++)
-        printf("%d. %s - %d anos\n", i + 1, female[i].name, female[i].age); //mostra os 10 primeiros femininose protege se tiver menos de 10
-
-    fclose(results); //Fecha os arquivos
-    fclose(bios);
-    return 0;
+// ordenação crescente (menor pro maior)
+int comparar_idades(const void *a, const void *b)
+{
+    Atletas *atletaA = (Atletas *)a;
+    Atletas *atletaB = (Atletas *)b;
+    return (atletaA->menor_idade - atletaB->menor_idade);
 }
 
+int dividir_csv(char *linha, char campos[][512], int max_campos) //divide o arquivo para em subcampos para 
+//facilitar a pesquisa e analise de dados
+{
+    int indice_linha = 0;
+    int posicao_campo = 0;
+    int indice_campo = 0;
+    int dentro_aspas = 0;
 
+    while (linha[indice_linha] && indice_campo < max_campos)
+    {
+        if (linha[indice_linha] == '"')
+        {
+            dentro_aspas = !dentro_aspas;
+        }
+        else if (linha[indice_linha] == ',' && !dentro_aspas)
+        {
+            campos[indice_campo][posicao_campo] = '\0';
+            indice_campo++;
+            posicao_campo = 0;
+        }
+        else if (linha[indice_linha] != '\n' && linha[indice_linha] != '\r')
+        {
+            campos[indice_campo][posicao_campo++] = linha[indice_linha];
+        }
+        indice_linha++;
+    }
+    campos[indice_campo][posicao_campo] = '\0';
+    return indice_campo + 1;
+}//Mostra a localização dentro da pesquisa do arquivo, ou seja, o número do campo dentro da linha do arquivo csv
+
+int extrair_ano(char *texto)
+{
+    int length = strlen(texto);
+    for (int i = 0; i <= length - 4; i++)
+    {
+        if (isdigit(texto[i]) && isdigit(texto[i + 1]) && isdigit(texto[i + 2]) && isdigit(texto[i + 3]))
+        {
+            return atoi(&texto[i]);
+        }
+    }
+    return 0;
+}//extrai o ano de strings para numeros inteiros
+
+int main()
+{
+    Atletas *atletas = (Atletas *)calloc(MAX_ATLETAS, sizeof(Atletas));
+    if (atletas == NULL)
+    {
+        printf("Erro: Memoria insuficiente!\n");
+        return 1; //Verifica se tem memoria suficiente
+    }
+
+    // Começa o  menor_idade com um valor alto para a comparação
+    for (int i = 0; i < MAX_ATLETAS; i++)
+    {
+        atletas[i].menor_idade = 999;
+    }
+
+    FILE *fbios = fopen("bios.csv", "r");
+    FILE *fresults = fopen("results.csv", "r");// abre os arquivos
+
+    char linhas[2048];
+    char campos[30][512];
+
+    if (!fbios || !fresults)
+    {
+        printf("Erro ao abrir arquivos. Verifique se bios.csv e results.csv estao na pasta.\n");
+        return 1;
+    }//verifica se abriu os arquivosde forma correta
+
+    printf("Lendo base de atletas...\n");
+    fgets(linhas, sizeof(linhas), fbios);
+    while (fgets(linhas, sizeof(linhas), fbios))
+    {
+        dividir_csv(linhas, campos, 30);
+        int id = atoi(campos[7]);
+        if (id > 0 && id < MAX_ATLETAS)
+        {
+            atletas[id].atleta_id = id;
+            strncpy(atletas[id].nome, campos[3], 99); // Usando 'Used name' que é mais limpo
+            atletas[id].genero = campos[1][0];        // 'M' ou 'F' (Masculino/Feminino)
+            atletas[id].data_nascimento = extrair_ano(campos[4]);
+        }
+    }
+
+    printf("Lendo resultados e calculando idades...\n");//calcula a idade
+    fgets(linhas, sizeof(linhas), fresults);
+    while (fgets(linhas, sizeof(linhas), fresults))
+    {
+        dividir_csv(linhas, campos, 30);
+        int id = atoi(campos[5]);
+
+        if (id > 0 && id < MAX_ATLETAS && atletas[id].data_nascimento > 0)
+        {
+            int ano_olimp = extrair_ano(campos[0]);
+            int idade = ano_olimp - atletas[id].data_nascimento;
+
+            // Filtro  para idades impossíveis (ex: dados errados)
+            if (idade > 5 && idade < atletas[id].menor_idade)
+            {
+                atletas[id].menor_idade = idade;
+                atletas[id].ano_olimpiada = ano_olimp;
+            }
+        }
+    }
+
+    Atletas *homens = (Atletas *)malloc(MAX_ATLETAS * sizeof(Atletas));
+    Atletas *mulheres = (Atletas *)malloc(MAX_ATLETAS * sizeof(Atletas)); 
+    int h_count = 0, m_count = 0;
+
+    for (int i = 0; i < MAX_ATLETAS; i++)
+    {
+        if (atletas[i].menor_idade > 0 && atletas[i].menor_idade != 999)
+        {
+            if (atletas[i].genero == 'M')
+            {
+                homens[h_count++] = atletas[i];
+            }
+            else if (atletas[i].genero == 'F')
+            {
+                mulheres[m_count++] = atletas[i];
+            }//separa os atletas por genero
+        }
+    }
+
+    qsort(homens, h_count, sizeof(Atletas), comparar_idades);
+    qsort(mulheres, m_count, sizeof(Atletas), comparar_idades); //compara e ordena por idade
+
+    printf("\n TOP 10 ATLETAS MASCULINOS MAIS JOVENS \n");
+    for (int i = 0; i < 10 && i < h_count; i++)
+        printf("%d. %-30s | %d anos (Olimpiada de %d)\n", i + 1, homens[i].nome, homens[i].menor_idade, homens[i].ano_olimpiada);
+
+    printf("\n TOP 10 ATLETAS FEMININAS MAIS JOVENS \n");
+    for (int i = 0; i < 10 && i < m_count; i++)
+        printf("%d. %-30s | %d anos (Olimpiada de %d)\n", i + 1, mulheres[i].nome, mulheres[i].menor_idade, mulheres[i].ano_olimpiada);
+
+    fclose(fbios);
+    fclose(fresults);
+    free(atletas);
+    free(homens);
+    free(mulheres);
+
+    return 0;
+}
