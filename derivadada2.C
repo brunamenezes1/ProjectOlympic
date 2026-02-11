@@ -115,6 +115,39 @@ void extrairCampos(char *linha, char *sex, char *noc, int *athlete_id, float *we
         }
     }
 }
+ 
+/* Gera gráfico de barras com Gnuplot */
+void gerarGraficoGenero(char *pais, int masculino, int feminino) {
+
+    FILE *gnuplot = popen("gnuplot", "w");
+    if (!gnuplot) {
+        printf("Erro ao abrir o gnuplot.\n");
+        return;
+    }
+
+    fprintf(gnuplot, "set terminal pngcairo size 800,600 enhanced font 'Arial,12'\n");
+    fprintf(gnuplot, "set output 'grafico_peso100kg%s.png'\n", pais);
+    fprintf(gnuplot, "set title 'Distribuição de Gênero (%s, peso > 100kg)'\n", pais);
+
+    fprintf(gnuplot, "set style data boxes\n");
+    fprintf(gnuplot, "set style fill solid 0.85 border rgb 'black'\n");
+    fprintf(gnuplot, "set boxwidth 0.6\n");
+    fprintf(gnuplot, "set ylabel 'Número de Atletas'\n");
+    fprintf(gnuplot, "set grid ytics\n");
+    fprintf(gnuplot, "set xtics ('Masculino' 1, 'Feminino' 2)\n");
+
+    fprintf(gnuplot,
+            "plot '-' using 1:2 title 'Masculino' lc rgb '#4A90E2', "
+            "'-' using 1:2 title 'Feminino' lc rgb '#E24A90'\n");
+
+    fprintf(gnuplot, "1 %d\n", masculino);
+    fprintf(gnuplot, "e\n");
+    fprintf(gnuplot, "2 %d\n", feminino);
+    fprintf(gnuplot, "e\n");
+
+    pclose(gnuplot);
+}
+
 
 
 int main() {
@@ -173,6 +206,9 @@ int main() {
     printf("Total de atletas: %d\n", masculino + feminino);
     printf("Atletas masculinos: %d\n", masculino);
     printf("Atletas femininos: %d\n", feminino);
+
+    /* Geração do gráfico */
+    gerarGraficoGenero(pais, masculino, feminino);
 
     return 0;
 }
