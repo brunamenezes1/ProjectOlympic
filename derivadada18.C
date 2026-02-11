@@ -66,6 +66,40 @@ int extrair_ano(char *texto)
     return 0;
 }//extrai o ano de strings para numeros inteiros
 
+//Gera os arquivos para criar o gráfico
+void gerar_arquivos_grafico(Atletas *homens, int h_count, Atletas *mulheres, int m_count) {
+    int freq_h[100] = {0};
+    int freq_m[100] = {0};
+
+    // Contabiliza a reincidencia das idades
+    for(int i = 0; i < h_count; i++) if(homens[i].menor_idade < 100) freq_h[homens[i].menor_idade]++;
+    for(int i = 0; i < m_count; i++) if(mulheres[i].menor_idade < 100) freq_m[mulheres[i].menor_idade]++;
+
+    // Gera arquivo dos dados
+    FILE *f_dados = fopen("dados_grafico.dat", "w");
+    if(f_dados) {
+        fprintf(f_dados, "# Idade Homens Mulheres\n");
+        for(int i = 10; i <= 45; i++) { // Foco na faixa etária olímpica semelhante
+            fprintf(f_dados, "%d %d %d\n", i, freq_h[i], freq_m[i]);
+        }
+        fclose(f_dados);
+    }
+
+    // Gera script do Gnuplot(cria grafico)
+    FILE *f_script = fopen("script_grafico.gp", "w");
+    if(f_script) {
+        fprintf(f_script, "set terminal png size 800,600\n");
+        fprintf(f_script, "set output 'grafico_idades.png'\n");
+        fprintf(f_script, "set title 'Distribuição de Idades na Primeira Olimpíada'\n");
+        fprintf(f_script, "set xlabel 'Idade'\n");
+        fprintf(f_script, "set ylabel 'Número de Atletas'\n");
+        fprintf(f_script, "set style data histograms\n");
+        fprintf(f_script, "set style fill solid\n");
+        fprintf(f_script, "plot 'dados_grafico.dat' using 2:xtic(1) title 'Homens', '' using 3 title 'Mulheres'\n");
+        fclose(f_script);
+    }
+}
+
 int main()
 {
     Atletas *atletas = (Atletas *)calloc(MAX_ATLETAS, sizeof(Atletas));
@@ -90,8 +124,8 @@ int main()
     if (!fbios || !fresults)
     {
         printf("Erro ao abrir arquivos. Verifique se bios.csv e results.csv estao na pasta.\n");
-        return 1;
-    }//verifica se abriu os arquivosde forma correta
+        return 1; //verifica se abriu os arquivosde forma correta
+    }
 
     printf("Lendo base de atletas...\n");
     fgets(linhas, sizeof(linhas), fbios);
@@ -158,6 +192,10 @@ int main()
     printf("\n TOP 10 ATLETAS FEMININAS MAIS JOVENS \n");
     for (int i = 0; i < 10 && i < m_count; i++)
         printf("%d. %-30s | %d anos (Olimpiada de %d)\n", i + 1, mulheres[i].nome, mulheres[i].menor_idade, mulheres[i].ano_olimpiada);
+
+    //Gera os arquivos para o gráfico
+    gerar_arquivos_grafico(homens, h_count, mulheres, m_count);
+    printf("\nArquivos para grafico gerados (dados_grafico.dat e script_grafico.gp).\n");
 
     fclose(fbios);
     fclose(fresults);
